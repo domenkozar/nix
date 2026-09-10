@@ -1088,8 +1088,11 @@ public:
      *
      * @param uri The URI of the substituter store
      * @return true if added successfully, false if already present
+     * @note For RemoteStore (daemon), the substituter is also forwarded to
+     *       the daemon, which only honours it for trusted users or when it
+     *       is listed in `trusted-substituters`
      */
-    bool addSubstituter(const std::string & uri);
+    virtual bool addSubstituter(const std::string & uri);
 
     /**
      * Add trusted public keys that will be used to verify store paths.
