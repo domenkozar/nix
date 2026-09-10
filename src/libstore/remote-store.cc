@@ -8,6 +8,7 @@
 #include "nix/store/build-result.hh"
 #include "nix/store/remote-store.hh"
 #include "nix/store/remote-store-connection.hh"
+#include "nix/store/store-reference.hh"
 #include "nix/store/worker-protocol.hh"
 #include "nix/store/worker-protocol-impl.hh"
 #include "nix/util/archive.hh"
@@ -176,6 +177,30 @@ RemoteStore::ConnectionHandle RemoteStore::getConnection()
 void RemoteStore::setOptions()
 {
     setOptions(*(getConnection().handle));
+}
+
+bool RemoteStore::addSubstituter(const std::string & uri)
+{
+    if (!Store::addSubstituter(uri))
+        return false;
+
+    /* The client-side list only serves queries made from this process.
+       Builds and substitutions happen in the daemon, whose Worker reads its
+       own substituter list, so the daemon has to be told as well. The
+       daemon applies the usual policy: it keeps the substituter for trusted
+       users or when it is in `trusted-substituters`, and warns otherwise. */
+    auto & substituters = settings.getWorkerSettings().substituters;
+    auto refs = substituters.get();
+    refs.push_back(StoreReference::parse(uri));
+    substituters.override(refs);
+    setOptions();
+    return true;
+}
+
+void RemoteStore::addTrustedPublicKeys(const Strings & keys)
+{
+    Store::addTrustedPublicKeys(keys);
+    setOptions();
 }
 
 bool RemoteStore::isValidPathUncached(const StorePath & path)
